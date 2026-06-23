@@ -12,6 +12,7 @@ export default function ProfilePage() {
   const [clubOpps, setClubOpps] = useState<any[]>([]);
   const [loadingOpps, setLoadingOpps] = useState(false);
   const [memberships, setMemberships] = useState<any[]>([]);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -71,6 +72,7 @@ export default function ProfilePage() {
 
   const handleApproveMembership = async (membershipId: string, memberUserId: string, memberRole: string) => {
     if (!confirm("¿Aprobar solicitud? Este usuario aparecerá verificado en tu club.")) return;
+    setProcessingId(membershipId);
     try {
       await supabase.from('club_memberships').update({ status: 'approved' }).eq('id', membershipId);
       
@@ -82,19 +84,24 @@ export default function ProfilePage() {
            await supabase.from('users').update({ coach_profile: { ...memberData.coach_profile, clubVerified: true } }).eq('id', memberUserId);
         }
       }
-      fetchClubMemberships();
+      await fetchClubMemberships();
     } catch(err) {
       console.error(err);
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleRejectMembership = async (membershipId: string) => {
     if (!confirm("¿Rechazar solicitud?")) return;
+    setProcessingId(membershipId);
     try {
       await supabase.from('club_memberships').update({ status: 'rejected' }).eq('id', membershipId);
-      fetchClubMemberships();
+      await fetchClubMemberships();
     } catch(err) {
       console.error(err);
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -263,10 +270,18 @@ export default function ProfilePage() {
                           <p className="text-sm text-gray-400 capitalize">{m.userRole === 'player' ? 'Jugador' : 'Entrenador'}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => handleApproveMembership(m.id, m.userId, m.userRole)} className="bg-justo-green text-white px-3 py-1 rounded-lg text-sm font-semibold hover:bg-justo-dark-green transition-colors">
-                            Aprobar
+                          <button 
+                            onClick={() => handleApproveMembership(m.id, m.userId, m.userRole)} 
+                            disabled={processingId === m.id}
+                            className="bg-justo-green text-white px-3 py-1 rounded-lg text-sm font-semibold hover:bg-justo-dark-green transition-colors disabled:opacity-50"
+                          >
+                            {processingId === m.id ? "Procesando..." : "Aprobar"}
                           </button>
-                          <button onClick={() => handleRejectMembership(m.id)} className="bg-[#333] text-gray-300 px-3 py-1 rounded-lg text-sm font-semibold hover:bg-[#444] transition-colors">
+                          <button 
+                            onClick={() => handleRejectMembership(m.id)} 
+                            disabled={processingId === m.id}
+                            className="bg-[#333] text-gray-300 px-3 py-1 rounded-lg text-sm font-semibold hover:bg-[#444] transition-colors disabled:opacity-50"
+                          >
                             Rechazar
                           </button>
                         </div>
