@@ -170,7 +170,13 @@ export default function ProfilePage() {
                       
                       {profile?.currentClub && (
                         <span className="text-gray-300 flex items-center gap-1">
-                          en {profile.currentClub}
+                          en {profile.clubVerified && profile.currentClubId ? (
+                            <Link href={`/profile/${profile.currentClubId}`} className="text-justo-green hover:underline font-semibold">
+                              {profile.currentClub}
+                            </Link>
+                          ) : (
+                            profile.currentClub
+                          )}
                         </span>
                       )}
                     </>
