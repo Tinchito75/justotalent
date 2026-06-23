@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
 import { FaInstagram, FaYoutube, FaTiktok, FaMapMarkerAlt } from "react-icons/fa";
 import { FiCheckCircle } from "react-icons/fi";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -13,6 +14,8 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
   
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [clubMembers, setClubMembers] = useState<any[]>([]);
+  const [clubOpps, setClubOpps] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -25,6 +28,12 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
         
         if (data && !error) {
           setUserData(data);
+          if (data.role === "club") {
+            const { data: mems } = await supabase.from('club_memberships').select('*').eq('club_id', data.id).eq('status', 'approved');
+            if (mems) setClubMembers(mems);
+            const { data: opps } = await supabase.from('opportunities').select('*').eq('club_id', data.id).order('created_at', { ascending: false });
+            if (opps) setClubOpps(opps);
+          }
         } else {
           router.push("/search/players");
         }
@@ -292,7 +301,62 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
                 )}
               </div>
             </>
-          ) : null}
+          ) : (
+            <div className="flex flex-col gap-6">
+              {/* Plantel del Club (Público) */}
+              <div className="bg-[#121212] p-6 md:p-8 rounded-2xl border border-[#2a2a2a] shadow-lg">
+                <h3 className="text-xl font-bold text-white mb-6">Plantel Oficial</h3>
+                {clubMembers.length === 0 ? (
+                  <p className="text-gray-500 italic text-sm">Este club aún no tiene miembros verificados en la plataforma.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {clubMembers.map(m => (
+                      <Link href={`/profile/${m.user_id}`} key={m.id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-3 flex items-center gap-3 hover:border-justo-green transition-colors">
+                        <div className="w-10 h-10 bg-[#222] border border-[#333] rounded-full flex items-center justify-center text-justo-green font-bold">
+                          {m.user_name?.charAt(0) || 'U'}
+                        </div>
+                        <div>
+                          <p className="font-bold text-white text-sm">{m.user_name}</p>
+                          <p className="text-xs text-gray-400 capitalize">{m.user_role === 'player' ? 'Jugador' : 'Entrenador'}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Búsquedas del Club (Público) */}
+              <div className="bg-[#121212] p-6 md:p-8 rounded-2xl border border-[#2a2a2a] shadow-lg">
+                <h3 className="text-xl font-bold text-white mb-6">Oportunidades Activas</h3>
+                {clubOpps.length === 0 ? (
+                  <p className="text-gray-500 italic text-sm">Este club no tiene búsquedas publicadas por el momento.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
+                    {clubOpps.map(opp => (
+                      <div key={opp.id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 relative">
+                        <div className="flex justify-between items-start mb-3">
+                          <span className="bg-[#222] border border-[#333] text-justo-green px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
+                            {opp.sport}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase ${opp.status === 'active' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'}`}>
+                            {opp.status === 'active' ? 'Activa' : 'Cerrada'}
+                          </span>
+                        </div>
+                        <h4 className="text-white font-bold text-lg mb-2">{opp.title}</h4>
+                        <p className="text-gray-400 text-sm line-clamp-2 mb-3 leading-relaxed">{opp.description}</p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mb-4">
+                          <FaMapMarkerAlt /> {opp.location}
+                        </p>
+                        <Link href={`/opportunities`} className="text-justo-green text-sm font-bold hover:underline">
+                          Ir a oportunidades &rarr;
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

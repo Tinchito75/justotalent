@@ -22,6 +22,7 @@ export default function Navbar() {
         <Link href="/" className={`transition-colors ${pathname === '/' ? 'text-justo-green font-semibold' : 'text-gray-300 hover:text-justo-white'}`}>Inicio</Link>
         <Link href="/opportunities" className={`transition-colors ${pathname === '/opportunities' ? 'text-justo-green font-semibold' : 'text-gray-300 hover:text-justo-white'}`}>Oportunidades</Link>
         <Link href="/search/players" className={`transition-colors ${pathname === '/search/players' ? 'text-justo-green font-semibold' : 'text-gray-300 hover:text-justo-white'}`}>Buscar Jugadores</Link>
+        <Link href="/search/clubs" className={`transition-colors ${pathname === '/search/clubs' ? 'text-justo-green font-semibold' : 'text-gray-300 hover:text-justo-white'}`}>Buscar Clubes</Link>
       </div>
 
       <div className="flex items-center gap-4">
