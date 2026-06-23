@@ -15,11 +15,9 @@
 }
 
 body {
-  background: linear-gradient(rgba(17, 17, 17, 0.75), rgba(17, 17, 17, 0.9)), url('https://zfgxckuloavorrjruiob.supabase.co/storage/v1/object/public/fotos/fondo.png') no-repeat center center fixed;
-  background-size: cover;
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-poppins), sans-serif;
-  min-height: 100vh;
 }
 
 option {

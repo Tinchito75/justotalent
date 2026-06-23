@@ -2,7 +2,13 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 md:p-24">
+    <main 
+      className="flex min-h-screen flex-col items-center justify-center p-8 md:p-24"
+      style={{
+        background: "linear-gradient(rgba(17, 17, 17, 0.75), rgba(17, 17, 17, 0.9)), url('https://zfgxckuloavorrjruiob.supabase.co/storage/v1/object/public/fotos/fondo.png') no-repeat center center fixed",
+        backgroundSize: "cover"
+      }}
+    >
       <div className="z-10 max-w-5xl w-full items-center justify-center text-center font-poppins flex flex-col gap-8">
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
           Donde el talento encuentra <span className="text-justo-green">oportunidades.</span>
