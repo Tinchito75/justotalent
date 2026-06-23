@@ -36,10 +36,16 @@ export default function Navbar() {
           ) : (
             <>
               <Link 
-                href="/admin-test"
+                href="/login"
+                className="text-sm font-medium hover:text-justo-green transition-colors hidden md:block"
+              >
+                Iniciar sesión
+              </Link>
+              <Link 
+                href="/register"
                 className="bg-justo-green text-justo-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-justo-dark-green transition-colors"
               >
-                Ingresar / Probar
+                Crear cuenta
               </Link>
             </>
           )
