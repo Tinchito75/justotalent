@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { FaInstagram, FaYoutube, FaTiktok, FaMapMarkerAlt } from "react-icons/fa";
 import { FiCheckCircle } from "react-icons/fi";
 import FavoriteButton from "@/components/FavoriteButton";
 
-export default function PublicProfilePage({ params }: { params: { id: string } }) {
+export default function PublicProfilePage() {
   const { supabase, user } = useAuth();
   const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
   
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
         const { data, error } = await supabase
           .from("users")
           .select("*")
-          .eq("id", params.id)
+          .eq("id", id)
           .single();
         
         if (data && !error) {
@@ -45,10 +47,10 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
       }
     };
     
-    if (params.id) {
+    if (id) {
       fetchUser();
     }
-  }, [params.id, supabase, router]);
+  }, [id, supabase, router]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-justo-green font-bold text-xl">Cargando perfil...</div>;
@@ -83,7 +85,7 @@ export default function PublicProfilePage({ params }: { params: { id: string } }
         <div className="absolute top-0 right-0 w-64 h-64 bg-justo-green/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
 
         <div className="absolute top-6 right-6 z-20">
-          {!isClub && user && user.id !== params.id && <FavoriteButton playerId={params.id} />}
+          {!isClub && user && user.id !== id && <FavoriteButton playerId={id} />}
         </div>
 
         <div className="flex flex-col md:flex-row gap-8 items-start relative z-10">
