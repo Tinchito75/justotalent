@@ -2,14 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AdminTestPage() {
   const router = useRouter();
-  const { refreshUserData } = useAuth();
+  const { refreshUserData, supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -44,42 +41,44 @@ export default function AdminTestPage() {
 
     try {
       // Intentar login primero
-      try {
-        const cred = await signInWithEmailAndPassword(auth, profile.email, profile.password);
-        await refreshUserData();
-        router.push("/profile");
-      } catch (loginError: any) {
-        // Si falla porque no existe, lo creamos
-        if (loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential" || loginError.code === "auth/invalid-login-credentials") {
-          const cred = await createUserWithEmailAndPassword(auth, profile.email, profile.password);
-          
-          // Crear documento en Firestore
-          await setDoc(doc(db, "users", cred.user.uid), {
-            uid: cred.user.uid,
+      let { data, error } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: profile.password,
+      });
+
+      if (error && error.message.includes('Invalid login credentials')) {
+        // Sign up if not exists
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: profile.email,
+          password: profile.password,
+        });
+        
+        if (signUpError) throw signUpError;
+        
+        // Create user record in DB
+        if (signUpData.user) {
+          const { error: dbError } = await supabase.from('users').upsert({
+            id: signUpData.user.id,
             email: profile.email,
-            displayName: `${profile.basicInfo.firstName} ${profile.basicInfo.lastName}`,
+            display_name: `${profile.basicInfo.firstName} ${profile.basicInfo.lastName}`,
             role: profile.role,
-            basicInfo: profile.basicInfo,
-            ...(type === 'player' ? { playerProfile: (profile as any).playerProfile } : {}),
-            ...(type === 'coach' ? { coachProfile: (profile as any).coachProfile } : {}),
-            ...(type === 'club' ? { clubProfile: (profile as any).clubProfile } : {}),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+            basic_info: profile.basicInfo,
+            player_profile: type === 'player' ? (profile as any).playerProfile : null,
+            coach_profile: type === 'coach' ? (profile as any).coachProfile : null,
+            club_profile: type === 'club' ? (profile as any).clubProfile : null,
           });
-          
-          await refreshUserData();
-          router.push("/profile");
-        } else {
-          throw loginError;
+
+          if (dbError) throw dbError;
         }
+      } else if (error) {
+        throw error;
       }
+
+      await refreshUserData();
+      router.push("/profile");
     } catch (error: any) {
       console.error(error);
-      if (error.code === "auth/operation-not-allowed") {
-        setMessage("⚠️ ERROR: Debes habilitar 'Correo/Contraseña' en los métodos de acceso de Firebase Authentication.");
-      } else {
-        setMessage(`Error: ${error.message}`);
-      }
+      setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -91,7 +90,7 @@ export default function AdminTestPage() {
         <h1 className="text-2xl font-bold mb-4">Panel de Pruebas (Admin)</h1>
         <p className="text-gray-400 mb-8 text-sm">
           Usa estos botones para iniciar sesión automáticamente con cuentas de prueba. 
-          Si no existen, se crearán solas (requiere tener habilitado Email/Password en Firebase).
+          Si no existen, se crearán solas en Supabase.
         </p>
 
         {message && (

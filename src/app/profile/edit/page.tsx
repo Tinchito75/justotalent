@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { doc, updateDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+
 
 export default function EditProfilePage() {
-  const { user, userData, refreshUserData, loading: authLoading } = useAuth();
+  const { user, userData, refreshUserData, loading: authLoading, supabase } = useAuth();
   const router = useRouter();
   
   const [loading, setLoading] = useState(false);
@@ -45,14 +44,14 @@ export default function EditProfilePage() {
       const currentRole = userData.role as "player" | "coach" | "club" || "player";
       setRole(currentRole);
       
-      let profile = userData.playerProfile;
-      if (currentRole === "coach") profile = userData.coachProfile;
-      if (currentRole === "club") profile = userData.clubProfile;
+      let profile = userData.player_profile;
+      if (currentRole === "coach") profile = userData.coach_profile;
+      if (currentRole === "club") profile = userData.club_profile;
 
       setFormData({
-        firstName: userData.basicInfo?.firstName || "",
-        lastName: userData.basicInfo?.lastName || "",
-        city: userData.basicInfo?.location?.city || "",
+        firstName: userData.basic_info?.firstName || "",
+        lastName: userData.basic_info?.lastName || "",
+        city: userData.basic_info?.location?.city || "",
         birthDate: profile?.birthDate || "",
         heightCm: profile?.heightCm?.toString() || "",
         sport: profile?.sport || "",
@@ -76,9 +75,10 @@ export default function EditProfilePage() {
         setExperienceList(profile?.experience || []);
       }
       const fetchClubs = async () => {
-        const q = query(collection(db, "users"), where("role", "==", "club"));
-        const snapshot = await getDocs(q);
-        setAvailableClubs(snapshot.docs.map(d => ({ id: d.id, ...d.data().clubProfile })));
+        const { data, error } = await supabase.from('users').select('id, club_profile').eq('role', 'club');
+        if (data && !error) {
+          setAvailableClubs(data.map(d => ({ id: d.id, ...d.club_profile })));
+        }
       };
       fetchClubs();
     }
@@ -128,23 +128,26 @@ export default function EditProfilePage() {
         lastName: formData.lastName,
         location: {
           city: formData.city,
-          country: "Argentina" // Simplificado por ahora
+          country: "Argentina"
         }
       };
 
+      const baseUpsert: any = {
+        id: user.id,
+        email: user.email,
+        display_name: `${basicInfo.firstName} ${basicInfo.lastName}`,
+        role: role,
+        basic_info: basicInfo,
+      };
+
       if (role === "club") {
-        const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, {
-          role: "club",
-          basicInfo,
-          clubProfile: {
-            clubName: formData.clubName,
-            sport: formData.sport,
-            sponsors: formData.sponsors.split(',').map(s => s.trim()).filter(s => s),
-          }
-        });
+        baseUpsert.club_profile = {
+          clubName: formData.clubName,
+          sport: formData.sport,
+          sponsors: formData.sponsors.split(',').map(s => s.trim()).filter(s => s),
+        };
       } else {
-        const profile = role === "player" ? userData?.playerProfile : userData?.coachProfile;
+        const profile = role === "player" ? userData?.player_profile : userData?.coach_profile;
         const baseProfile = {
           birthDate: formData.birthDate,
           sport: formData.sport,
@@ -156,41 +159,33 @@ export default function EditProfilePage() {
         };
 
         if (formData.currentClubId && formData.currentClubId !== profile?.currentClubId) {
-          await setDoc(doc(db, "club_memberships", `${user.uid}_${formData.currentClubId}`), {
-            userId: user.uid,
-            clubId: formData.currentClubId,
-            userName: `${basicInfo.firstName} ${basicInfo.lastName}`,
-            userRole: role,
+          await supabase.from('club_memberships').insert({
+            user_id: user.id,
+            club_id: formData.currentClubId,
+            user_name: `${basicInfo.firstName} ${basicInfo.lastName}`,
+            user_role: role,
             status: "pending",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
           });
         }
 
-        const userRef = doc(db, "users", user.uid);
         if (role === "player") {
-          await updateDoc(userRef, {
-            role: "player",
-            basicInfo,
-            playerProfile: {
-              ...baseProfile,
-              heightCm: Number(formData.heightCm) || null,
-              clubVerified: profile?.currentClubId === formData.currentClubId ? profile?.clubVerified : false,
-            }
-          });
+          baseUpsert.player_profile = {
+            ...baseProfile,
+            heightCm: Number(formData.heightCm) || null,
+            clubVerified: profile?.currentClubId === formData.currentClubId ? profile?.clubVerified : false,
+          };
         } else if (role === "coach") {
-          await updateDoc(userRef, {
-            role: "coach",
-            basicInfo,
-            coachProfile: {
-              ...baseProfile,
-              specialty: formData.specialty,
-              certifications: formData.certifications,
-              clubVerified: profile?.currentClubId === formData.currentClubId ? profile?.clubVerified : false,
-            }
-          });
+          baseUpsert.coach_profile = {
+            ...baseProfile,
+            specialty: formData.specialty,
+            certifications: formData.certifications,
+            clubVerified: profile?.currentClubId === formData.currentClubId ? profile?.clubVerified : false,
+          };
         }
       }
+
+      const { error } = await supabase.from('users').upsert(baseUpsert);
+      if (error) throw error;
 
       await refreshUserData();
       router.push("/profile");

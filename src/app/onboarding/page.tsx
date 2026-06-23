@@ -3,11 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { doc, updateDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 export default function OnboardingPage() {
-  const { user, userData, refreshUserData, loading: authLoading } = useAuth();
+  const { user, userData, refreshUserData, loading: authLoading, supabase } = useAuth();
   const router = useRouter();
   
   const [loading, setLoading] = useState(false);
@@ -42,19 +40,23 @@ export default function OnboardingPage() {
       return () => clearTimeout(timeout);
     }
     
-    if (userData?.basicInfo) {
+    if (userData?.basic_info) {
       router.push("/profile");
     }
   }, [user, userData, authLoading, router]);
 
   useEffect(() => {
     const fetchClubs = async () => {
-      const q = query(collection(db, "users"), where("role", "==", "club"));
-      const snapshot = await getDocs(q);
-      setAvailableClubs(snapshot.docs.map(d => ({ id: d.id, ...d.data().clubProfile })));
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, club_profile')
+        .eq('role', 'club');
+      if (data && !error) {
+        setAvailableClubs(data.map(d => ({ id: d.id, ...d.club_profile })));
+      }
     };
     fetchClubs();
-  }, []);
+  }, [supabase]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -79,8 +81,6 @@ export default function OnboardingPage() {
     
     setLoading(true);
     try {
-      const userRef = doc(db, "users", user.uid);
-      
       const basicInfo = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -90,16 +90,20 @@ export default function OnboardingPage() {
         }
       };
 
+      const baseUpsert: any = {
+        id: user.id,
+        email: user.email,
+        display_name: `${formData.firstName} ${formData.lastName}`,
+        role: role,
+        basic_info: basicInfo,
+      };
+
       if (role === "club") {
-        await updateDoc(userRef, {
-          role: "club",
-          basicInfo,
-          clubProfile: {
-            clubName: formData.clubName,
-            sport: formData.sport,
-            sponsors: formData.sponsors.split(',').map(s => s.trim()).filter(s => s),
-          }
-        });
+        baseUpsert.club_profile = {
+          clubName: formData.clubName,
+          sport: formData.sport,
+          sponsors: formData.sponsors.split(',').map(s => s.trim()).filter(s => s),
+        };
       } else {
         const baseProfile = {
           birthDate: formData.birthDate,
@@ -112,64 +116,59 @@ export default function OnboardingPage() {
         };
 
         if (formData.currentClubId) {
-          await setDoc(doc(db, "club_memberships", `${user.uid}_${formData.currentClubId}`), {
-            userId: user.uid,
-            clubId: formData.currentClubId,
-            userName: `${basicInfo.firstName} ${basicInfo.lastName}`,
-            userRole: role,
+          await supabase.from('club_memberships').insert({
+            user_id: user.id,
+            club_id: formData.currentClubId,
+            user_name: `${basicInfo.firstName} ${basicInfo.lastName}`,
+            user_role: role,
             status: "pending",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
           });
         }
 
         if (role === "player") {
-          await updateDoc(userRef, {
-            role: "player",
-            basicInfo,
-            playerProfile: {
-              ...baseProfile,
-              heightCm: Number(formData.heightCm) || null,
-              clubVerified: false,
-            }
-          });
+          baseUpsert.player_profile = {
+            ...baseProfile,
+            heightCm: Number(formData.heightCm) || null,
+            clubVerified: false,
+          };
         } else if (role === "coach") {
-          await updateDoc(userRef, {
-            role: "coach",
-            basicInfo,
-            coachProfile: {
-              ...baseProfile,
-              specialty: formData.specialty,
-              certifications: formData.certifications,
-              clubVerified: false,
-            }
-          });
+          baseUpsert.coach_profile = {
+            ...baseProfile,
+            specialty: formData.specialty,
+            certifications: formData.certifications,
+            clubVerified: false,
+          };
         }
       }
+
+      const { error } = await supabase.from('users').upsert(baseUpsert);
+      if (error) throw error;
 
       await refreshUserData();
       router.push("/profile");
     } catch (error) {
       console.error("Error saving profile", error);
-      alert("Hubo un error al guardar tu perfil. Inténtalo de nuevo.");
+      alert("Hubo un error al guardar tu perfil.");
     } finally {
       setLoading(false);
     }
   };
 
+  if (authLoading || (!userData?.basic_info && user === null)) {
+    return <div className="p-8 text-center text-gray-400">Cargando...</div>;
+  }
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8">
-      <div className="w-full max-w-2xl bg-[#1a1a1a] p-8 rounded-2xl border border-[#333] my-8">
-        <h1 className="text-3xl font-bold font-poppins mb-2">Completá tu perfil</h1>
-        <p className="text-gray-400 mb-8">
-          Contanos sobre vos para que la comunidad de Justo Talent pueda encontrarte.
-        </p>
+      <div className="w-full max-w-3xl bg-[#1a1a1a] p-8 rounded-2xl border border-[#333]">
+        <h1 className="text-3xl font-bold font-poppins mb-2 text-justo-green">Completa tu perfil</h1>
+        <p className="text-gray-400 mb-8">Necesitamos algunos datos más para que puedas empezar.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-300">Tipo de Perfil *</label>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+            <label className="text-sm font-medium text-gray-300">¿Qué rol ocupas en el deporte? *</label>
+            <div className="flex flex-col sm:flex-row gap-4">
               <button 
                 type="button" 
                 onClick={() => setRole("player")} 

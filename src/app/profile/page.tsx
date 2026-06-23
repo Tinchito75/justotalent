@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import Link from "next/link";
 
 export default function ProfilePage() {
-  const { user, userData, loading } = useAuth();
+  const { user, userData, loading, supabase } = useAuth();
   const router = useRouter();
   
   const [clubOpps, setClubOpps] = useState<any[]>([]);
@@ -32,16 +30,15 @@ export default function ProfilePage() {
     if (!user) return;
     setLoadingOpps(true);
     try {
-      const q = query(collection(db, "opportunities"), where("clubId", "==", user.uid));
-      const querySnapshot = await getDocs(q);
-      const opps = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Sort by creation time manually
-      opps.sort((a: any, b: any) => {
-        const timeA = a.createdAt?.toMillis() || 0;
-        const timeB = b.createdAt?.toMillis() || 0;
-        return timeB - timeA; // Descending
-      });
-      setClubOpps(opps);
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('*')
+        .eq('club_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (data) {
+        setClubOpps(data);
+      }
     } catch (error) {
       console.error("Error fetching club opportunities:", error);
     } finally {
@@ -52,9 +49,21 @@ export default function ProfilePage() {
   const fetchClubMemberships = async () => {
     if (!user) return;
     try {
-      const q = query(collection(db, "club_memberships"), where("clubId", "==", user.uid));
-      const querySnapshot = await getDocs(q);
-      setMemberships(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const { data, error } = await supabase
+        .from('club_memberships')
+        .select('*')
+        .eq('club_id', user.id);
+        
+      if (data) {
+        setMemberships(data.map(d => ({ 
+          id: d.id, 
+          userId: d.user_id, 
+          clubId: d.club_id, 
+          userName: d.user_name, 
+          userRole: d.user_role, 
+          status: d.status 
+        })));
+      }
     } catch (error) {
       console.error("Error fetching memberships", error);
     }
@@ -63,12 +72,15 @@ export default function ProfilePage() {
   const handleApproveMembership = async (membershipId: string, memberUserId: string, memberRole: string) => {
     if (!confirm("¿Aprobar solicitud? Este usuario aparecerá verificado en tu club.")) return;
     try {
-      await updateDoc(doc(db, "club_memberships", membershipId), { status: "approved" });
-      const userRef = doc(db, "users", memberUserId);
-      if (memberRole === 'player') {
-        await updateDoc(userRef, { "playerProfile.clubVerified": true });
-      } else {
-        await updateDoc(userRef, { "coachProfile.clubVerified": true });
+      await supabase.from('club_memberships').update({ status: 'approved' }).eq('id', membershipId);
+      
+      const { data: memberData } = await supabase.from('users').select('*').eq('id', memberUserId).single();
+      if (memberData) {
+        if (memberRole === 'player' && memberData.player_profile) {
+           await supabase.from('users').update({ player_profile: { ...memberData.player_profile, clubVerified: true } }).eq('id', memberUserId);
+        } else if (memberRole === 'coach' && memberData.coach_profile) {
+           await supabase.from('users').update({ coach_profile: { ...memberData.coach_profile, clubVerified: true } }).eq('id', memberUserId);
+        }
       }
       fetchClubMemberships();
     } catch(err) {
@@ -79,7 +91,7 @@ export default function ProfilePage() {
   const handleRejectMembership = async (membershipId: string) => {
     if (!confirm("¿Rechazar solicitud?")) return;
     try {
-      await updateDoc(doc(db, "club_memberships", membershipId), { status: "rejected" });
+      await supabase.from('club_memberships').update({ status: 'rejected' }).eq('id', membershipId);
       fetchClubMemberships();
     } catch(err) {
       console.error(err);
@@ -93,16 +105,16 @@ export default function ProfilePage() {
   const isCoach = userData?.role === "coach";
   const isClub = userData?.role === "club";
   
-  let profile = userData?.playerProfile;
-  if (isCoach) profile = userData?.coachProfile;
-  if (isClub) profile = userData?.clubProfile;
+  let profile = userData?.player_profile;
+  if (isCoach) profile = userData?.coach_profile;
+  if (isClub) profile = userData?.club_profile;
 
   const expList = profile?.experience || [];
   const chars = profile?.characteristics;
   const charsList = Array.isArray(chars) ? chars : (typeof chars === 'string' && chars ? [chars] : []);
   const sponsors = isClub ? profile?.sponsors || [] : [];
 
-  const displayName = isClub ? profile?.clubName : `${userData?.basicInfo?.firstName} ${userData?.basicInfo?.lastName}`;
+  const displayName = isClub ? profile?.clubName : userData?.display_name;
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-8 max-w-4xl mx-auto w-full gap-6">
@@ -114,7 +126,7 @@ export default function ProfilePage() {
         </Link>
         <div className="flex items-center gap-6">
           <img 
-            src={userData?.profilePictureUrl || "https://ui-avatars.com/api/?name=" + (isClub ? profile?.clubName : (userData?.basicInfo?.firstName || user.displayName || "U"))} 
+            src={userData?.profilePictureUrl || "https://ui-avatars.com/api/?name=" + (isClub ? profile?.clubName : (userData?.basic_info?.firstName || user?.email?.charAt(0) || "U"))} 
             alt="Profile" 
             className="w-24 h-24 rounded-full object-cover"
           />
@@ -123,7 +135,7 @@ export default function ProfilePage() {
               {displayName}
             </h1>
             <p className="text-justo-green font-medium text-lg">
-              {isClub ? `Coordinador: ${userData?.basicInfo?.firstName} ${userData?.basicInfo?.lastName}` : (
+              {isClub ? `Coordinador: ${userData?.basic_info?.firstName} ${userData?.basic_info?.lastName}` : (
                 <>
                   {isCoach && profile?.specialty ? `${profile.specialty} de ` : ""}
                   {profile?.sport}
@@ -141,7 +153,7 @@ export default function ProfilePage() {
               )}
             </p>
             <p className="text-gray-400 text-sm mt-1">
-              📍 {userData?.basicInfo?.location?.city}, {userData?.basicInfo?.location?.country} {isClub && ` • Deporte: ${profile?.sport}`}
+              📍 {userData?.basic_info?.location?.city}, {userData?.basic_info?.location?.country} {isClub && ` • Deporte: ${profile?.sport}`}
             </p>
           </div>
         </div>

@@ -3,12 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+
 import Link from "next/link";
 
 export default function NewOpportunityPage() {
-  const { user, userData, loading: authLoading } = useAuth();
+  const { user, userData, loading: authLoading, supabase } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -42,17 +41,17 @@ export default function NewOpportunityPage() {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, "opportunities"), {
-        clubId: user.uid,
-        clubName: userData.clubProfile?.clubName || "Club",
+      const { error } = await supabase.from('opportunities').insert({
+        club_id: user.id,
         title: formData.title,
         sport: formData.sport,
+        type: "General",
         location: formData.location,
         description: formData.description,
         requirements: formData.requirements,
         status: "active",
-        createdAt: serverTimestamp(),
       });
+      if (error) throw error;
       router.push("/profile");
     } catch (error) {
       console.error("Error creating opportunity:", error);

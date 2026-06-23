@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
-  const { user, loading, signInWithGoogle, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   return (
     <nav className="w-full flex items-center justify-between p-4 md:px-8 border-b border-[#333] bg-justo-black sticky top-0 z-50">
@@ -35,18 +35,12 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <button 
-                onClick={signInWithGoogle}
-                className="text-sm font-medium hover:text-justo-green transition-colors hidden md:block"
-              >
-                Iniciar sesión
-              </button>
-              <button 
-                onClick={signInWithGoogle}
+              <Link 
+                href="/admin-test"
                 className="bg-justo-green text-justo-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-justo-dark-green transition-colors"
               >
-                Crear cuenta
-              </button>
+                Ingresar / Probar
+              </Link>
             </>
           )
         )}

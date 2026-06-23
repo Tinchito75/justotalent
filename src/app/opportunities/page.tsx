@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 
 export default function OpportunitiesPage() {
-  const { userData } = useAuth();
+  const { userData, supabase } = useAuth();
   const [opportunities, setOpportunities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -21,25 +19,21 @@ export default function OpportunitiesPage() {
   const fetchOpportunities = async () => {
     setLoading(true);
     try {
-      const oppsRef = collection(db, "opportunities");
-      // Ideally we would order by createdAt desc, but Firestore requires a composite index for where(status) + orderBy(createdAt).
-      // So for now, we just query by status and sort in memory.
-      const q = query(oppsRef, where("status", "==", "active"));
-      const querySnapshot = await getDocs(q);
-      
-      const oppsList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as any[];
-      
-      // Sort by creation time (newest first)
-      oppsList.sort((a, b) => {
-        const timeA = a.createdAt?.toMillis() || 0;
-        const timeB = b.createdAt?.toMillis() || 0;
-        return timeB - timeA;
-      });
-
-      setOpportunities(oppsList);
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('*, users!club_id(club_profile)')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+        
+      if (data && !error) {
+        const oppsList = data.map(doc => ({
+          id: doc.id,
+          clubName: doc.users?.club_profile?.clubName || "Club",
+          createdAt: doc.created_at,
+          ...doc
+        }));
+        setOpportunities(oppsList);
+      }
     } catch (error) {
       console.error("Error fetching opportunities:", error);
     } finally {
@@ -118,7 +112,7 @@ export default function OpportunitiesPage() {
                     {opp.sport}
                   </span>
                   <span className="text-gray-500 text-xs">
-                    {opp.createdAt ? new Date(opp.createdAt.toMillis()).toLocaleDateString() : "Reciente"}
+                    {opp.createdAt ? new Date(opp.createdAt).toLocaleDateString() : "Reciente"}
                   </span>
                 </div>
                 

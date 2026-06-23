@@ -1,98 +1,86 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { User, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { auth, googleProvider, db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, serverTimestamp, DocumentData } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase";
+import { User } from "@supabase/supabase-js";
 
 interface AuthContextType {
   user: User | null;
-  userData: DocumentData | null;
+  userData: any | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUserData: () => Promise<void>;
+  supabase: ReturnType<typeof createClient>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<DocumentData | null>(null);
+  const [userData, setUserData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const supabase = createClient();
 
   const fetchUserData = async (uid: string) => {
-    const userRef = doc(db, "users", uid);
-    const docSnap = await getDoc(userRef);
-    if (docSnap.exists()) {
-      setUserData(docSnap.data());
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', uid)
+      .single();
+      
+    if (data && !error) {
+      setUserData(data);
     } else {
       setUserData(null);
     }
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user || null;
       setUser(currentUser);
+      
       if (currentUser) {
-        await fetchUserData(currentUser.uid);
+        await fetchUserData(currentUser.id);
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+      
+      if (currentUser) {
+        await fetchUserData(currentUser.id);
       } else {
         setUserData(null);
       }
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  const signInWithGoogle = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      const userRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(userRef);
-      
-      if (!docSnap.exists()) {
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          profilePictureUrl: user.photoURL,
-          role: null,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        await fetchUserData(user.uid);
-        router.push("/onboarding");
-      } else {
-        await fetchUserData(user.uid);
-        const data = docSnap.data();
-        if (!data.role || !data.basicInfo) {
-          router.push("/onboarding");
-        } else {
-          router.push("/profile");
-        }
-      }
-    } catch (error) {
-      console.error("Error signing in with Google", error);
-    }
-  };
-
   const logout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     router.push("/");
   };
 
   const refreshUserData = async () => {
     if (user) {
-      await fetchUserData(user.uid);
+      await fetchUserData(user.id);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, userData, loading, signInWithGoogle, logout, refreshUserData }}>
+    <AuthContext.Provider value={{ user, userData, loading, logout, refreshUserData, supabase }}>
       {children}
     </AuthContext.Provider>
   );
