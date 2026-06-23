@@ -24,6 +24,10 @@ export default function OnboardingPage() {
     clubName: "",
     sponsors: "",
     currentClubId: "",
+    position: "",
+    strongFoot: "",
+    weightKg: "",
+    category: "",
   });
 
   const [availableClubs, setAvailableClubs] = useState<any[]>([]);
@@ -129,6 +133,10 @@ export default function OnboardingPage() {
           baseUpsert.player_profile = {
             ...baseProfile,
             heightCm: Number(formData.heightCm) || null,
+            weightKg: Number(formData.weightKg) || null,
+            position: formData.position,
+            strongFoot: formData.strongFoot,
+            category: formData.category,
             clubVerified: false,
           };
         } else if (role === "coach") {
@@ -261,9 +269,42 @@ export default function OnboardingPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {role === "player" ? (
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-300">Estatura (cm)</label>
-                    <input type="number" name="heightCm" value={formData.heightCm} onChange={handleChange} className="bg-[#222] border border-[#444] rounded-lg p-3 text-white focus:outline-none focus:border-justo-green" placeholder="Ej. 180" />
+                  <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium text-gray-300">Posición Principal</label>
+                      <select name="position" value={formData.position} onChange={handleChange} className="bg-[#222] border border-[#444] rounded-lg p-3 text-white focus:outline-none focus:border-justo-green">
+                        <option value="">Selecciona...</option>
+                        <option value="Arquero">Arquero</option>
+                        <option value="Defensor">Defensor</option>
+                        <option value="Mediocampista">Mediocampista</option>
+                        <option value="Delantero">Delantero</option>
+                        <option value="Pivot">Pivot</option>
+                        <option value="Cierre">Cierre</option>
+                        <option value="Ala">Ala</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium text-gray-300">Pierna Hábil</label>
+                      <select name="strongFoot" value={formData.strongFoot} onChange={handleChange} className="bg-[#222] border border-[#444] rounded-lg p-3 text-white focus:outline-none focus:border-justo-green">
+                        <option value="">Selecciona...</option>
+                        <option value="Derecha">Derecha</option>
+                        <option value="Izquierda">Izquierda</option>
+                        <option value="Ambidiestro">Ambidiestro</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium text-gray-300">Estatura (cm)</label>
+                      <input type="number" name="heightCm" value={formData.heightCm} onChange={handleChange} className="bg-[#222] border border-[#444] rounded-lg p-3 text-white focus:outline-none focus:border-justo-green" placeholder="Ej. 180" />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium text-gray-300">Peso (kg)</label>
+                      <input type="number" name="weightKg" value={formData.weightKg} onChange={handleChange} className="bg-[#222] border border-[#444] rounded-lg p-3 text-white focus:outline-none focus:border-justo-green" placeholder="Ej. 75" />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium text-gray-300">Categoría</label>
+                      <input type="text" name="category" value={formData.category} onChange={handleChange} className="bg-[#222] border border-[#444] rounded-lg p-3 text-white focus:outline-none focus:border-justo-green" placeholder="Ej. Primera, 2005..." />
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
