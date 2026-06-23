@@ -172,21 +172,21 @@ export default function OnboardingPage() {
               <button 
                 type="button" 
                 onClick={() => setRole("player")} 
-                className={`flex-1 py-3 rounded-lg border font-medium transition-colors text-sm ${role === 'player' ? 'border-justo-green bg-justo-green bg-opacity-20 text-justo-green' : 'border-[#444] text-gray-400 hover:border-gray-500'}`}
+                className={`flex-1 py-3 rounded-lg border font-medium transition-colors text-sm ${role === 'player' ? 'border-justo-green bg-justo-green text-justo-black' : 'border-[#444] text-gray-400 hover:border-gray-500'}`}
               >
                 Jugador / Deportista
               </button>
               <button 
                 type="button" 
                 onClick={() => setRole("coach")} 
-                className={`flex-1 py-3 rounded-lg border font-medium transition-colors text-sm ${role === 'coach' ? 'border-justo-green bg-justo-green bg-opacity-20 text-justo-green' : 'border-[#444] text-gray-400 hover:border-gray-500'}`}
+                className={`flex-1 py-3 rounded-lg border font-medium transition-colors text-sm ${role === 'coach' ? 'border-justo-green bg-justo-green text-justo-black' : 'border-[#444] text-gray-400 hover:border-gray-500'}`}
               >
                 Entrenador / PF
               </button>
               <button 
                 type="button" 
                 onClick={() => setRole("club")} 
-                className={`flex-1 py-3 rounded-lg border font-medium transition-colors text-sm ${role === 'club' ? 'border-justo-green bg-justo-green bg-opacity-20 text-justo-green' : 'border-[#444] text-gray-400 hover:border-gray-500'}`}
+                className={`flex-1 py-3 rounded-lg border font-medium transition-colors text-sm ${role === 'club' ? 'border-justo-green bg-justo-green text-justo-black' : 'border-[#444] text-gray-400 hover:border-gray-500'}`}
               >
                 Club / Coordinador
               </button>
