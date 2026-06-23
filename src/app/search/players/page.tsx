@@ -263,9 +263,9 @@ export default function SearchPlayersPage() {
                   </div>
                 </div>
                 
-                <button className="w-full bg-[#222] hover:bg-[#333] text-white py-2 rounded-lg text-sm font-medium transition-colors border border-[#444]">
+                <Link href={`/profile/${p.id}`} className="w-full bg-[#222] hover:bg-[#333] text-white py-2 rounded-lg text-sm font-medium transition-colors border border-[#444] block text-center">
                   Ver perfil completo
-                </button>
+                </Link>
               </div>
             </div>
           ))

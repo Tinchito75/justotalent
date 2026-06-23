@@ -58,7 +58,7 @@ export default function FavoriteButton({ playerId }: { playerId: string }) {
   return (
     <button 
       onClick={toggleFavorite}
-      className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-red-500 bg-red-500 bg-opacity-20 hover:bg-opacity-30' : 'text-gray-400 bg-[#333] hover:text-white hover:bg-[#444]'}`}
+      className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-red-500 bg-[#333] hover:bg-[#444] shadow-sm' : 'text-gray-400 bg-[#333] hover:text-white hover:bg-[#444]'}`}
       title={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
     >
       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
