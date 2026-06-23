@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
+  const pathname = usePathname();
 
   return (
     <nav className="w-full flex items-center justify-between p-4 md:px-8 border-b border-[#333] bg-justo-black sticky top-0 z-50">
@@ -16,17 +18,17 @@ export default function Navbar() {
         </Link>
       </div>
       
-      <div className="hidden md:flex items-center gap-6 text-sm text-gray-300 font-medium">
-        <Link href="/" className="hover:text-justo-white transition-colors">Inicio</Link>
-        <Link href="/opportunities" className="hover:text-justo-white transition-colors">Oportunidades</Link>
-        <Link href="/search/players" className="hover:text-justo-white transition-colors text-justo-green font-semibold">Buscar Jugadores</Link>
+      <div className="hidden md:flex items-center gap-6 text-sm font-medium">
+        <Link href="/" className={`transition-colors ${pathname === '/' ? 'text-justo-green font-semibold' : 'text-gray-300 hover:text-justo-white'}`}>Inicio</Link>
+        <Link href="/opportunities" className={`transition-colors ${pathname === '/opportunities' ? 'text-justo-green font-semibold' : 'text-gray-300 hover:text-justo-white'}`}>Oportunidades</Link>
+        <Link href="/search/players" className={`transition-colors ${pathname === '/search/players' ? 'text-justo-green font-semibold' : 'text-gray-300 hover:text-justo-white'}`}>Buscar Jugadores</Link>
       </div>
 
       <div className="flex items-center gap-4">
         {!loading && (
           user ? (
             <div className="flex items-center gap-4">
-              <Link href="/profile" className="text-sm font-semibold hover:text-justo-green transition-colors">Mi Perfil</Link>
+              <Link href="/profile" className={`text-sm font-semibold transition-colors ${pathname?.startsWith('/profile') ? 'text-justo-green' : 'hover:text-justo-green text-gray-300'}`}>Mi Perfil</Link>
               <button 
                 onClick={logout}
                 className="text-sm text-gray-400 hover:text-justo-white transition-colors"
