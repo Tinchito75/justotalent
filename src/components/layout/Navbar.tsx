@@ -12,9 +12,11 @@ export default function Navbar() {
     <nav className="w-full flex items-center justify-between p-4 md:px-8 border-b border-[#333] bg-justo-black sticky top-0 z-50">
       <div className="flex items-center gap-2">
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <span className="text-2xl font-bold font-poppins tracking-tight">
-            Justo<span className="text-justo-green">Talent</span>
-          </span>
+          <img 
+            src="https://zfgxckuloavorrjruiob.supabase.co/storage/v1/object/public/fotos/logo.jpeg" 
+            alt="JustoTalent Logo" 
+            className="h-10 md:h-12 w-auto object-contain rounded-md"
+          />
         </Link>
       </div>
       
